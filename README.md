@@ -24,8 +24,11 @@ custom quirk, not a HACS integration or an accepted upstream release.
 
 1. Back up any existing custom handler for this model. Keep only one active
    custom handler for the model in your custom-quirks directory.
-2. Copy `custom_zha_quirks/diyruz_zintercom.py` into
-   `/config/custom_zha_quirks/` on Home Assistant.
+2. For a battery-powered adapter, copy **`queued_quirk/diyruz_zintercom.py`**
+   into `/config/custom_zha_quirks/` on Home Assistant. This extended variant
+   accepts configuration changes while the board is asleep. For protocol-only
+   support, use `custom_zha_quirks/diyruz_zintercom.py` instead. Install only one
+   variant, under that same filename; do not copy both into the active directory.
 3. Merge the following into your existing `configuration.yaml`. Do not create
    a second `zha:` section if you already have one:
 
@@ -40,11 +43,38 @@ custom quirk, not a HACS integration or an accepted upstream release.
    are available. Keep the existing Zigbee pairing; re-pairing was not needed
    in the tested installation.
 
-Battery-powered firmware sleeps. A timed-out configuration request is not
-queued automatically by the standard number control. Configure the board
-while it is naturally awake, for example around a real call. Frequent battery
-removal is not an intended operating procedure. This portable handler does not
-include a Home Assistant filesystem-based queue for delayed configuration.
+## Persistent configuration queue (extended variant)
+
+Changes from the existing ZHA number controls and handset-sound switch are
+saved before HA reports success, then delivered at the next genuine Idle
+report from the adapter. The queue supports all five timers and sound. It
+keeps the latest request per setting, survives a restart and confirms each
+value with a fresh device read. One failed field does not block the others.
+
+The existing controls continue to show **actual device values**. A diagnostic
+**Pending settings** sensor shows the remaining count; its `status` text
+lists requested values and any retry error. **Cancel pending settings** cancels
+unsent requests. An already-transmitted Zigbee packet cannot be recalled.
+
+The opening mode remains an immediate command with normal ZHA transport
+behavior; it is **never stored in this durable queue**. Once/Always/Drop and
+emergency Never are intentionally excluded from replay after a later call.
+Use an HA call-policy automation for an intentional future one-shot pass.
+
+Storage is atomic JSON next to the configured Zigbee database, isolated by
+its database filename, device IEEE and endpoint. No hardcoded HA directory
+or device address is required. An absent/in-memory/URI database or a storage
+failure produces an explicit queue error. Corrupt data is preserved for
+recovery; other intercom functionality remains available.
+
+A short Idle receive window, low-priority single attempts, per-setting
+versions, cancellation and round-robin scheduling avoid background retry
+loops and give incoming calls priority. Battery removal is not needed to
+apply a pending setting. Read [the queue design](docs/settings-queue.md) for
+semantics, limits and the proposed upstream architecture.
+
+The protocol-only variant has no persistent queue: a configuration request
+sent while the board sleeps can time out. Configure it while naturally awake.
 
 ## Opening behavior
 
@@ -73,10 +103,12 @@ measurement. A one-second talk-to-open interval was observed on a real call.
 The DIYRuZ manufacturer alias and descriptor variants are covered by offline
 tests; they have not been tested on a second physical board.
 
-The 15 offline tests use real ZHA/zigpy classes and a simulated device. They
-check entity creation, wire types, actual report-frame decoding, battery
-scaling, unknown cached measurements, reporting, wake-read rate limiting and
-that unrelated devices are unchanged. They do not contact a coordinator.
+The 41 offline tests use real ZHA/zigpy classes and simulated controllers.
+They cover the base protocol and entities, actual report-frame decoding,
+battery handling, all six queued settings, UI setters, real ZHA restart,
+confirmation, stale write acknowledgements, concurrent edits, cancellation
+inside disk and transport operations, storage failures, fairness and priority
+for incoming calls. They do not contact a physical coordinator.
 
 ```sh
 python3.14 -m venv .venv
@@ -94,6 +126,14 @@ device-specific pytest cases and validation of the complete upstream suite
 (5265 passed, 2 expected failures), plus all pre-commit checks. It is pending
 review; acceptance and release timing depend on the maintainers. Until it
 ships in Home Assistant, the manual installation above remains available.
+
+The extended queue is maintained here separately from that base-support PR.
+Local quirks take precedence over the built-in handler for this device, so
+upstream acceptance does not remove the extended version's features. Existing
+entity IDs remain the same. To return to built-in support, cancel pending
+settings, remove the local handler and reload ZHA. Keep the local extension
+updated: its override does not automatically inherit future changes to the
+built-in handler.
 
 Protocol references:
 
