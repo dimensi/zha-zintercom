@@ -1,5 +1,7 @@
 # XYZROE / DIYRuZ DIY_Zintercom for ZHA
 
+[![Tests](https://github.com/dimensi/zha-zintercom/actions/workflows/tests.yml/badge.svg)](https://github.com/dimensi/zha-zintercom/actions/workflows/tests.yml)
+
 Custom device handler (quirk) for the Zigbee intercom adapter `DIY_Zintercom`.
 It runs inside Home Assistant's existing ZHA integration. This is a manual
 custom quirk, not a HACS integration or an accepted upstream release.
@@ -86,10 +88,12 @@ python3.14 -m venv .venv
 
 The intended upstream is [zigpy/zha-device-handlers](https://github.com/zigpy/zha-device-handlers).
 The original support request is [#3763](https://github.com/zigpy/zha-device-handlers/issues/3763).
-This package is not yet an upstream PR: adapting tests to the repository's
-fixtures, adding sanitized diagnostics and running its current checks are
-still required before submission. Acceptance and release timing depend on
-its maintainers.
+Upstream support is proposed in [PR #5781](https://github.com/zigpy/zha-device-handlers/pull/5781).
+That PR includes an anonymized physical-device diagnostics fixture, 19
+device-specific pytest cases and validation of the complete upstream suite
+(5265 passed, 2 expected failures), plus all pre-commit checks. It is pending
+review; acceptance and release timing depend on the maintainers. Until it
+ships in Home Assistant, the manual installation above remains available.
 
 Protocol references:
 
